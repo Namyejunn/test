@@ -1,0 +1,131 @@
+  <!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>플래피버드</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #70c5ce;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      border: 2px solid #000;
+      background-color: #d0f4f7;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let bird = {
+      x: 80,
+      y: 200,
+      width: 30,
+      height: 30,
+      gravity: 0.6,
+      lift: -10,
+      velocity: 0
+    };
+
+    let pipes = [];
+    let frame = 0;
+    let score = 0;
+    let gameOver = false;
+
+    function drawBird() {
+      ctx.fillStyle = "yellow";
+      ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+    }
+
+    function drawPipes() {
+      ctx.fillStyle = "green";
+      for (let pipe of pipes) {
+        ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+        ctx.fillRect(pipe.x, pipe.bottom, pipe.width, canvas.height - pipe.bottom);
+      }
+    }
+
+    function updatePipes() {
+      if (frame % 90 === 0) {
+        let pipeHeight = Math.floor(Math.random() * 200) + 100;
+        let gap = 150;
+        pipes.push({
+          x: canvas.width,
+          width: 50,
+          top: pipeHeight,
+          bottom: pipeHeight + gap
+        });
+      }
+
+      for (let i = pipes.length - 1; i >= 0; i--) {
+        pipes[i].x -= 2;
+
+        if (
+          bird.x < pipes[i].x + pipes[i].width &&
+          bird.x + bird.width > pipes[i].x &&
+          (bird.y < pipes[i].top || bird.y + bird.height > pipes[i].bottom)
+        ) {
+          gameOver = true;
+        }
+
+        if (pipes[i].x + pipes[i].width === bird.x) {
+          score++;
+        }
+
+        if (pipes[i].x + pipes[i].width < 0) {
+          pipes.splice(i, 1);
+        }
+      }
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "black";
+      ctx.font = "24px Arial";
+      ctx.fillText("점수: " + score, 10, 30);
+    }
+
+    function drawGameOver() {
+      ctx.fillStyle = "red";
+      ctx.font = "48px Arial";
+      ctx.fillText("게임 오버", 80, canvas.height / 2);
+    }
+
+    function gameLoop() {
+      if (gameOver) {
+        drawGameOver();
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      bird.velocity += bird.gravity;
+      bird.y += bird.velocity;
+
+      if (bird.y + bird.height > canvas.height || bird.y < 0) {
+        gameOver = true;
+      }
+
+      updatePipes();
+      drawPipes();
+      drawBird();
+      drawScore();
+
+      frame++;
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener("keydown", () => {
+      bird.velocity = bird.lift;
+    });
+
+    gameLoop();
+  </script>
+</body>
+</html>
