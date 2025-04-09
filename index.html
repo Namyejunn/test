@@ -21,8 +21,8 @@
             position: absolute;
             bottom: 20px;
             left: 20px;
-            width: 100px;
-            height: 100px;
+            width: 120px; /* 조이스틱 크기 증가 */
+            height: 120px; /* 조이스틱 크기 증가 */
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.5);
             display: flex;
@@ -32,8 +32,8 @@
         }
 
         #joystick {
-            width: 80px;
-            height: 80px;
+            width: 100px; /* 조이스틱 크기 증가 */
+            height: 100px; /* 조이스틱 크기 증가 */
             border-radius: 50%;
             background: rgba(0, 0, 0, 0.5);
             position: relative;
@@ -41,8 +41,8 @@
         }
 
         #stick {
-            width: 40px;
-            height: 40px;
+            width: 50px; /* 스틱 크기 증가 */
+            height: 50px; /* 스틱 크기 증가 */
             border-radius: 50%;
             background: rgba(255, 0, 0, 0.7);
             position: absolute;
@@ -50,6 +50,10 @@
             left: 50%;
             transform: translate(-50%, -50%);
             transition: transform 0.1s;
+        }
+
+        .glow {
+            box-shadow: 0 0 20px rgba(255, 255, 0, 0.8);
         }
     </style>
 </head>
@@ -75,6 +79,7 @@
         };
 
         let bullets = [];
+        let monsters = [];
         let backgroundStars = [];
         let joystick = document.getElementById('joystick');
         let stick = document.getElementById('stick');
@@ -99,15 +104,25 @@
             });
         }
 
-        function shootBullet(angle) {
+        function shootBullet() {
             const bulletSpeed = 10;
             bullets.push({
                 x: player.x,
                 y: player.y,
-                dx: Math.cos(angle) * bulletSpeed,
-                dy: Math.sin(angle) * bulletSpeed,
+                dx: bulletSpeed,
+                dy: 0,
                 radius: 8,
                 color: 'yellow'
+            });
+        }
+
+        function createMonster() {
+            monsters.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: 15,
+                color: 'green',
+                speed: 1
             });
         }
 
@@ -115,19 +130,28 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawStars();
 
-            // Update player position based on joystick
+            // Update player position (오른쪽으로만 이동)
             if (joystickActive) {
-                const angle = Math.atan2(stick.offsetTop - 40, stick.offsetLeft - 40);
-                player.x += Math.cos(angle) * player.speed;
-                player.y += Math.sin(angle) * player.speed;
+                player.x += player.speed; // 항상 오른쪽으로 이동
             }
 
             // Update bullets
             bullets.forEach((bullet, index) => {
                 bullet.x += bullet.dx;
-                bullet.y += bullet.dy;
-                if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
+                if (bullet.x > canvas.width) {
                     bullets.splice(index, 1);
+                }
+            });
+
+            // Update monsters
+            monsters.forEach((monster, index) => {
+                const angle = Math.atan2(player.y - monster.y, player.x - monster.x);
+                monster.x += Math.cos(angle) * monster.speed;
+                monster.y += Math.sin(angle) * monster.speed;
+
+                // 몬스터가 화면 밖으로 나가면 제거
+                if (monster.x < 0 || monster.x > canvas.width || monster.y < 0 || monster.y > canvas.height) {
+                    monsters.splice(index, 1);
                 }
             });
 
@@ -145,6 +169,14 @@
                 ctx.fill();
             });
 
+            // Draw monsters
+            monsters.forEach(monster => {
+                ctx.fillStyle = monster.color;
+                ctx.beginPath();
+                ctx.arc(monster.x, monster.y, monster.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
             requestAnimationFrame(update);
         }
 
@@ -152,10 +184,10 @@
             joystickActive = true;
             const touch = e.touches[0];
             const rect = joystick.getBoundingClientRect();
-            const offsetX = touch.clientX - rect.left - 40;
-            const offsetY = touch.clientY - rect.top - 40;
+            const offsetX = touch.clientX - rect.left - 50; // 스틱 중앙 조정
+            const offsetY = touch.clientY - rect.top - 50; // 스틱 중앙 조정
             const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
-            if (distance < 40) {
+            if (distance < 50) {
                 stick.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
             }
         });
@@ -164,14 +196,14 @@
             if (joystickActive) {
                 const touch = e.touches[0];
                 const rect = joystick.getBoundingClientRect();
-                const offsetX = touch.clientX - rect.left - 40;
-                const offsetY = touch.clientY - rect.top - 40;
+                const offsetX = touch.clientX - rect.left - 50; // 스틱 중앙 조정
+                const offsetY = touch.clientY - rect.top - 50; // 스틱 중앙 조정
                 const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
-                if (distance < 40) {
+                if (distance < 50) {
                     stick.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
                 } else {
                     const angle = Math.atan2(offsetY, offsetX);
-                    stick.style.transform = `translate(${Math.cos(angle) * 40}px, ${Math.sin(angle) * 40}px)`;
+                    stick.style.transform = `translate(${Math.cos(angle) * 50}px, ${Math.sin(angle) * 50}px)`;
                 }
             }
         });
@@ -180,6 +212,14 @@
             joystickActive = false;
             stick.style.transform = 'translate(-50%, -50%)';
         });
+
+        // 총알 발사 이벤트
+        document.addEventListener('touchend', () => {
+            shootBullet();
+        });
+
+        // 몬스터 주기적으로 생성
+        setInterval(createMonster, 2000); // 2초마다 몬스터 생성
 
         createStars();
         update();
