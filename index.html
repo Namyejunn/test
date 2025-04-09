@@ -1,131 +1,80 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>플래피버드</title>
-  <style>
-    body {
-      margin: 0;
-      background-color: #70c5ce;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    canvas {
-      border: 2px solid #000;
-      background-color: #d0f4f7;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPS 게임</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { background: #000; display: block; }
+    </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="400" height="600"></canvas>
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-    let bird = {
-      x: 80,
-      y: 200,
-      width: 30,
-      height: 30,
-      gravity: 0.6,
-      lift: -10,
-      velocity: 0
-    };
+        let player = { x: canvas.width / 2, y: canvas.height / 2, size: 20, speed: 5 };
+        let bullets = [];
+        let keys = {};
 
-    let pipes = [];
-    let frame = 0;
-    let score = 0;
-    let gameOver = false;
-
-    function drawBird() {
-      ctx.fillStyle = "yellow";
-      ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
-    }
-
-    function drawPipes() {
-      ctx.fillStyle = "green";
-      for (let pipe of pipes) {
-        ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
-        ctx.fillRect(pipe.x, pipe.bottom, pipe.width, canvas.height - pipe.bottom);
-      }
-    }
-
-    function updatePipes() {
-      if (frame % 90 === 0) {
-        let pipeHeight = Math.floor(Math.random() * 200) + 100;
-        let gap = 150;
-        pipes.push({
-          x: canvas.width,
-          width: 50,
-          top: pipeHeight,
-          bottom: pipeHeight + gap
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
         });
-      }
 
-      for (let i = pipes.length - 1; i >= 0; i--) {
-        pipes[i].x -= 2;
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
 
-        if (
-          bird.x < pipes[i].x + pipes[i].width &&
-          bird.x + bird.width > pipes[i].x &&
-          (bird.y < pipes[i].top || bird.y + bird.height > pipes[i].bottom)
-        ) {
-          gameOver = true;
+        function update() {
+            if (keys['KeyW']) player.y -= player.speed;
+            if (keys['KeyS']) player.y += player.speed;
+            if (keys['KeyA']) player.x -= player.speed;
+            if (keys['KeyD']) player.x += player.speed;
+
+            bullets.forEach((bullet, index) => {
+                bullet.x += bullet.dx;
+                bullet.y += bullet.dy;
+                if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
+                    bullets.splice(index, 1);
+                }
+            });
         }
 
-        if (pipes[i].x + pipes[i].width === bird.x) {
-          score++;
+        function shoot() {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 10;
+            bullets.push({
+                x: player.x,
+                y: player.y,
+                dx: Math.cos(angle) * speed,
+                dy: Math.sin(angle) * speed
+            });
         }
 
-        if (pipes[i].x + pipes[i].width < 0) {
-          pipes.splice(i, 1);
+        window.addEventListener('click', shoot);
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
+
+            bullets.forEach(bullet => {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(bullet.x, bullet.y, 5, 5);
+            });
         }
-      }
-    }
 
-    function drawScore() {
-      ctx.fillStyle = "black";
-      ctx.font = "24px Arial";
-      ctx.fillText("점수: " + score, 10, 30);
-    }
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
 
-    function drawGameOver() {
-      ctx.fillStyle = "red";
-      ctx.font = "48px Arial";
-      ctx.fillText("게임 오버", 80, canvas.height / 2);
-    }
-
-    function gameLoop() {
-      if (gameOver) {
-        drawGameOver();
-        return;
-      }
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      bird.velocity += bird.gravity;
-      bird.y += bird.velocity;
-
-      if (bird.y + bird.height > canvas.height || bird.y < 0) {
-        gameOver = true;
-      }
-
-      updatePipes();
-      drawPipes();
-      drawBird();
-      drawScore();
-
-      frame++;
-      requestAnimationFrame(gameLoop);
-    }
-
-    document.addEventListener("keydown", () => {
-      bird.velocity = bird.lift;
-    });
-
-    gameLoop();
-  </script>
+        gameLoop();
+    </script>
 </body>
 </html>
