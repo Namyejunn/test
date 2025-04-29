@@ -1,170 +1,175 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>벽돌깨기</title>
+  <title>2D FPS Game - Keyboard Only</title>
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #111; }
-    canvas { display: block; margin: 0 auto; background: #222; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #111;
+    }
+    canvas {
+      display: block;
+      background: #222;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-family: sans-serif;
+      font-size: 20px;
+    }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="480" height="320"></canvas>
 
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+<canvas id="gameCanvas"></canvas>
+<div id="score">Score: 0</div>
 
-    const ballRadius = 8;
-    let x = canvas.width / 2;
-    let y = canvas.height - 30;
-    let dx = 2;
-    let dy = -2;
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 
-    const paddleHeight = 10;
-    const paddleWidth = 75;
-    let paddleX = (canvas.width - paddleWidth) / 2;
+  const player = {
+    x: canvas.width / 2,
+    y: canvas.height - 60,
+    width: 40,
+    height: 40,
+    color: 'lime',
+    speed: 5
+  };
 
-    let rightPressed = false;
-    let leftPressed = false;
+  const bullets = [];
+  const enemies = [];
 
-    const brickRowCount = 3;
-    const brickColumnCount = 5;
-    const brickWidth = 75;
-    const brickHeight = 20;
-    const brickPadding = 10;
-    const brickOffsetTop = 30;
-    const brickOffsetLeft = 30;
+  let keys = {};
+  let score = 0;
 
-    let score = 0;
+  document.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (e.code === 'Space') {
+      shoot();
+    }
+  });
 
-    const bricks = [];
-    for (let c = 0; c < brickColumnCount; c++) {
-      bricks[c] = [];
-      for (let r = 0; r < brickRowCount; r++) {
-        bricks[c][r] = { x: 0, y: 0, status: 1 };
+  document.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+  });
+
+  function shoot() {
+    bullets.push({
+      x: player.x + player.width/2 - 5,
+      y: player.y,
+      width: 5,
+      height: 10,
+      color: 'yellow',
+      speed: 7
+    });
+  }
+
+  function spawnEnemy() {
+    enemies.push({
+      x: Math.random() * (canvas.width - 40),
+      y: -40,
+      width: 40,
+      height: 40,
+      color: 'red',
+      speed: 2 + Math.random() * 2
+    });
+  }
+
+  function update() {
+    // Player Movement
+    if (keys['ArrowLeft'] && player.x > 0) {
+      player.x -= player.speed;
+    }
+    if (keys['ArrowRight'] && player.x + player.width < canvas.width) {
+      player.x += player.speed;
+    }
+    if (keys['ArrowUp'] && player.y > 0) {
+      player.y -= player.speed;
+    }
+    if (keys['ArrowDown'] && player.y + player.height < canvas.height) {
+      player.y += player.speed;
+    }
+
+    // Bullets update
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      bullets[i].y -= bullets[i].speed;
+      if (bullets[i].y < 0) {
+        bullets.splice(i, 1);
       }
     }
 
-    document.addEventListener("keydown", keyDownHandler);
-    document.addEventListener("keyup", keyUpHandler);
-
-    function keyDownHandler(e) {
-      if (e.key === "Right" || e.key === "ArrowRight" || e.key === "d") {
-        rightPressed = true;
-      } else if (e.key === "Left" || e.key === "ArrowLeft" || e.key === "a") {
-        leftPressed = true;
+    // Enemies update
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      enemies[i].y += enemies[i].speed;
+      if (enemies[i].y > canvas.height) {
+        enemies.splice(i, 1);
       }
     }
 
-    function keyUpHandler(e) {
-      if (e.key === "Right" || e.key === "ArrowRight" || e.key === "d") {
-        rightPressed = false;
-      } else if (e.key === "Left" || e.key === "ArrowLeft" || e.key === "a") {
-        leftPressed = false;
-      }
-    }
-
-    function collisionDetection() {
-      for (let c = 0; c < brickColumnCount; c++) {
-        for (let r = 0; r < brickRowCount; r++) {
-          const b = bricks[c][r];
-          if (b.status === 1) {
-            if (
-              x > b.x &&
-              x < b.x + brickWidth &&
-              y > b.y &&
-              y < b.y + brickHeight
-            ) {
-              dy = -dy;
-              b.status = 0;
-              score++;
-              if (score === brickRowCount * brickColumnCount) {
-                alert("축하합니다! 모두 깼어요!");
-                document.location.reload();
-              }
-            }
-          }
+    // Collision Detection
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      for (let j = bullets.length - 1; j >= 0; j--) {
+        if (isColliding(enemies[i], bullets[j])) {
+          enemies.splice(i, 1);
+          bullets.splice(j, 1);
+          score++;
+          document.getElementById('score').innerText = `Score: ${score}`;
+          break;
         }
       }
     }
+  }
 
-    function drawBall() {
-      ctx.beginPath();
-      ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
-      ctx.fillStyle = "#00ffcc";
-      ctx.fill();
-      ctx.closePath();
+  function isColliding(a, b) {
+    return a.x < b.x + b.width &&
+           a.x + a.width > b.x &&
+           a.y < b.y + b.height &&
+           a.y + a.height > b.y;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Player
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // Draw Bullets
+    for (let bullet of bullets) {
+      ctx.fillStyle = bullet.color;
+      ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
     }
 
-    function drawPaddle() {
-      ctx.beginPath();
-      ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
-      ctx.fillStyle = "#00ccff";
-      ctx.fill();
-      ctx.closePath();
+    // Draw Enemies
+    for (let enemy of enemies) {
+      ctx.fillStyle = enemy.color;
+      ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
     }
+  }
 
-    function drawBricks() {
-      for (let c = 0; c < brickColumnCount; c++) {
-        for (let r = 0; r < brickRowCount; r++) {
-          if (bricks[c][r].status === 1) {
-            const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
-            const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
-            bricks[c][r].x = brickX;
-            bricks[c][r].y = brickY;
-            ctx.beginPath();
-            ctx.rect(brickX, brickY, brickWidth, brickHeight);
-            ctx.fillStyle = "#ff6666";
-            ctx.fill();
-            ctx.closePath();
-          }
-        }
-      }
-    }
-
-    function drawScore() {
-      ctx.font = "16px Arial";
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText("점수: " + score, 8, 20);
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawBricks();
-      drawBall();
-      drawPaddle();
-      drawScore();
-      collisionDetection();
-
-      if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
-        dx = -dx;
-      }
-      if (y + dy < ballRadius) {
-        dy = -dy;
-      } else if (y + dy > canvas.height - ballRadius) {
-        if (x > paddleX && x < paddleX + paddleWidth) {
-          dy = -dy;
-        } else {
-          alert("게임 오버!");
-          document.location.reload();
-        }
-      }
-
-      x += dx;
-      y += dy;
-
-      if (rightPressed && paddleX < canvas.width - paddleWidth) {
-        paddleX += 5;
-      } else if (leftPressed && paddleX > 0) {
-        paddleX -= 5;
-      }
-
-      requestAnimationFrame(draw);
-    }
-
+  function gameLoop() {
+    update();
     draw();
-  </script>
+    requestAnimationFrame(gameLoop);
+  }
+
+  setInterval(spawnEnemy, 1000); // Spawn enemy every second
+  gameLoop();
+
+  // Resize canvas when window size changes
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+</script>
+
 </body>
 </html>
